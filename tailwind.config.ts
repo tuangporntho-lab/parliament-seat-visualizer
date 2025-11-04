@@ -47,6 +47,16 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        vote: {
+          agree: "hsl(var(--vote-agree))",
+          disagree: "hsl(var(--vote-disagree))",
+          abstain: "hsl(var(--vote-abstain))",
+          absent: "hsl(var(--vote-absent))",
+        },
+        parliament: {
+          gold: "hsl(var(--parliament-gold))",
+          blue: "hsl(var(--parliament-blue))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
