@@ -24,27 +24,8 @@ export const VoteSummaryChart = ({ mps }: VoteSummaryChartProps) => {
     return Array.from(uniqueParties).sort();
   }, [mps]);
 
-  // Calculate vote totals
+  // Calculate vote totals (filtered by party if selected)
   const voteTotals = useMemo(() => {
-    const totals = {
-      agree: 0,
-      disagree: 0,
-      abstain: 0,
-      absent: 0,
-      total: mps.length,
-    };
-
-    mps.forEach((mp) => {
-      totals[mp.vote]++;
-    });
-
-    return totals;
-  }, [mps]);
-
-  // Calculate party-specific votes
-  const partyVotes = useMemo(() => {
-    if (!selectedParty) return null;
-
     const totals = {
       agree: 0,
       disagree: 0,
@@ -54,7 +35,7 @@ export const VoteSummaryChart = ({ mps }: VoteSummaryChartProps) => {
     };
 
     mps.forEach((mp) => {
-      if (mp.party === selectedParty) {
+      if (!selectedParty || selectedParty === "all" || mp.party === selectedParty) {
         totals[mp.vote]++;
         totals.total++;
       }
@@ -62,6 +43,7 @@ export const VoteSummaryChart = ({ mps }: VoteSummaryChartProps) => {
 
     return totals;
   }, [mps, selectedParty]);
+
 
   // Find selected voter
   const voterInfo = useMemo(() => {
@@ -158,15 +140,19 @@ export const VoteSummaryChart = ({ mps }: VoteSummaryChartProps) => {
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {/* Active Filter Info */}
+        {selectedParty && selectedParty !== "all" && (
+          <div className="text-sm text-muted-foreground">
+            กำลังแสดงข้อมูล: <span className="font-medium text-foreground">{selectedParty}</span> ({voteTotals.total} คน)
+          </div>
+        )}
+
         {/* Main Bar Chart */}
         <div className="space-y-2">
           <div className="flex items-center h-12 rounded-lg overflow-hidden border">
             {/* Agree */}
             <div
-              className={cn(
-                "h-full bg-vote-agree transition-all relative group cursor-pointer",
-                selectedParty && "opacity-30"
-              )}
+              className="h-full bg-vote-agree transition-all relative group cursor-pointer"
               style={{ width: `${(voteTotals.agree / voteTotals.total) * 100}%` }}
             >
               {/* Tooltip */}
@@ -181,10 +167,7 @@ export const VoteSummaryChart = ({ mps }: VoteSummaryChartProps) => {
 
             {/* Disagree */}
             <div
-              className={cn(
-                "h-full bg-vote-disagree transition-all relative group cursor-pointer",
-                selectedParty && "opacity-30"
-              )}
+              className="h-full bg-vote-disagree transition-all relative group cursor-pointer"
               style={{ width: `${(voteTotals.disagree / voteTotals.total) * 100}%` }}
             >
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -198,10 +181,7 @@ export const VoteSummaryChart = ({ mps }: VoteSummaryChartProps) => {
 
             {/* Abstain */}
             <div
-              className={cn(
-                "h-full bg-vote-abstain transition-all relative group cursor-pointer",
-                selectedParty && "opacity-30"
-              )}
+              className="h-full bg-vote-abstain transition-all relative group cursor-pointer"
               style={{ width: `${(voteTotals.abstain / voteTotals.total) * 100}%` }}
             >
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -215,10 +195,7 @@ export const VoteSummaryChart = ({ mps }: VoteSummaryChartProps) => {
 
             {/* Absent */}
             <div
-              className={cn(
-                "h-full bg-vote-absent transition-all relative group cursor-pointer",
-                selectedParty && "opacity-30"
-              )}
+              className="h-full bg-vote-absent transition-all relative group cursor-pointer"
               style={{ width: `${(voteTotals.absent / voteTotals.total) * 100}%` }}
             >
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -232,71 +209,6 @@ export const VoteSummaryChart = ({ mps }: VoteSummaryChartProps) => {
           </div>
         </div>
 
-        {/* Party Highlight Bar */}
-        {selectedParty && partyVotes && (
-          <div className="space-y-2 pt-4 border-t">
-            <div className="text-sm font-medium">
-              {selectedParty} ({partyVotes.total} คน)
-            </div>
-            <div className="flex items-center h-12 rounded-lg overflow-hidden border border-primary/50 shadow-sm">
-              {partyVotes.agree > 0 && (
-                <div
-                  className="h-full bg-vote-agree relative group cursor-pointer"
-                  style={{ width: `${(partyVotes.agree / partyVotes.total) * 100}%` }}
-                >
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="bg-popover text-popover-foreground px-3 py-2 rounded-md shadow-lg text-sm font-medium border">
-                      <div>เห็นด้วย: {partyVotes.agree} คน</div>
-                      <div>{getPercentage(partyVotes.agree, partyVotes.total)}%</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {partyVotes.disagree > 0 && (
-                <div
-                  className="h-full bg-vote-disagree relative group cursor-pointer"
-                  style={{ width: `${(partyVotes.disagree / partyVotes.total) * 100}%` }}
-                >
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="bg-popover text-popover-foreground px-3 py-2 rounded-md shadow-lg text-sm font-medium border">
-                      <div>ไม่เห็นด้วย: {partyVotes.disagree} คน</div>
-                      <div>{getPercentage(partyVotes.disagree, partyVotes.total)}%</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {partyVotes.abstain > 0 && (
-                <div
-                  className="h-full bg-vote-abstain relative group cursor-pointer"
-                  style={{ width: `${(partyVotes.abstain / partyVotes.total) * 100}%` }}
-                >
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="bg-popover text-popover-foreground px-3 py-2 rounded-md shadow-lg text-sm font-medium border">
-                      <div>งดออกเสียง: {partyVotes.abstain} คน</div>
-                      <div>{getPercentage(partyVotes.abstain, partyVotes.total)}%</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {partyVotes.absent > 0 && (
-                <div
-                  className="h-full bg-vote-absent relative group cursor-pointer"
-                  style={{ width: `${(partyVotes.absent / partyVotes.total) * 100}%` }}
-                >
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="bg-popover text-popover-foreground px-3 py-2 rounded-md shadow-lg text-sm font-medium border">
-                      <div>ไม่ลงคะแนน: {partyVotes.absent} คน</div>
-                      <div>{getPercentage(partyVotes.absent, partyVotes.total)}%</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Voter Info */}
         {selectedVoter && voterInfo && (
