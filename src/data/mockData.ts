@@ -1,5 +1,21 @@
 import { MP, Bill, VoteType } from "@/types/parliament";
 
+// Mock voting history for MPs
+export interface VotingRecord {
+  billId: string;
+  billName: string;
+  date: string;
+  vote: VoteType;
+}
+
+export interface MPStats {
+  totalVotes: number;
+  attendanceRate: number;
+  agreePercentage: number;
+  disagreePercentage: number;
+  abstainPercentage: number;
+}
+
 // Mock bills data
 export const mockBills: Bill[] = [
   {
@@ -108,4 +124,39 @@ export function generateMockMPs(billId: string): MP[] {
   }
   
   return mps;
+}
+
+// Generate voting history for a specific MP
+export function generateMPVotingHistory(mpId: string): VotingRecord[] {
+  return mockBills.map(bill => {
+    const mps = generateMockMPs(bill.id);
+    const mp = mps.find(m => m.id === mpId);
+    return {
+      billId: bill.id,
+      billName: bill.name,
+      date: bill.date,
+      vote: mp?.vote || "absent"
+    };
+  });
+}
+
+// Generate statistics for a specific MP
+export function generateMPStats(mpId: string): MPStats {
+  const history = generateMPVotingHistory(mpId);
+  const totalVotes = history.length;
+  const absentCount = history.filter(h => h.vote === "absent").length;
+  const agreeCount = history.filter(h => h.vote === "agree").length;
+  const disagreeCount = history.filter(h => h.vote === "disagree").length;
+  const abstainCount = history.filter(h => h.vote === "abstain").length;
+  
+  const attendanceRate = ((totalVotes - absentCount) / totalVotes) * 100;
+  const activeVotes = totalVotes - absentCount;
+  
+  return {
+    totalVotes,
+    attendanceRate: Math.round(attendanceRate),
+    agreePercentage: activeVotes > 0 ? Math.round((agreeCount / activeVotes) * 100) : 0,
+    disagreePercentage: activeVotes > 0 ? Math.round((disagreeCount / activeVotes) * 100) : 0,
+    abstainPercentage: activeVotes > 0 ? Math.round((abstainCount / activeVotes) * 100) : 0,
+  };
 }
