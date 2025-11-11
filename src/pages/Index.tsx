@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { ParliamentVisualization } from "@/components/ParliamentVisualization";
 import { VoteSummaryCard } from "@/components/VoteSummaryCard";
+import { VoteSummaryChart } from "@/components/VoteSummaryChart";
 import { BillSelector } from "@/components/BillSelector";
 import { mockBills, generateMockMPs } from "@/data/mockData";
 import { VoteSummary } from "@/types/parliament";
@@ -63,7 +64,9 @@ const Index = () => {
           </aside>
 
           {/* Visualization */}
-          <section className="lg:col-span-3">
+          <section className="lg:col-span-3 space-y-6">
+            <VoteSummaryChart mps={mps} />
+            
             <ParliamentVisualization mps={mps} />
             
             {/* Legend */}
