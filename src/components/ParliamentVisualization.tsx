@@ -49,9 +49,9 @@ export const ParliamentVisualization = ({ mps }: ParliamentVisualizationProps) =
     d3.select(svgRef.current).selectAll("*").remove();
 
     const width = 1000;
-    const height = 600;
+    const height = 650;
     const centerX = width / 2;
-    const centerY = height - 50;
+    const centerY = height - 80;
 
     // Create SVG with D3
     const svg = d3.select(svgRef.current)
@@ -114,7 +114,7 @@ export const ParliamentVisualization = ({ mps }: ParliamentVisualizationProps) =
     
     let mpIndex = 0;
     for (let row = 0; row < rows && mpIndex < mps.length; row++) {
-      const radius = 150 + row * 45;
+      const radius = 120 + row * 42;
       const seatsInRow = Math.floor(20 + row * 5);
       const angleStep = Math.PI / (seatsInRow - 1);
       
@@ -147,58 +147,96 @@ export const ParliamentVisualization = ({ mps }: ParliamentVisualizationProps) =
       .style("pointer-events", "none")
       .style("max-width", "20rem");
 
-    // Draw seats with D3
-    g.selectAll("circle")
+    // Draw seats with D3 - Create groups for each seat
+    const seats = g.selectAll("g.seat")
       .data(positions)
-      .join("circle")
-      .attr("cx", d => d.x)
-      .attr("cy", d => d.y)
-      .attr("r", 6)
+      .join("g")
+      .attr("class", "seat")
+      .attr("transform", d => `translate(${d.x},${d.y})`)
+      .style("cursor", "pointer");
+
+    // Draw circles
+    seats.append("circle")
+      .attr("r", 10)
       .attr("fill", d => `hsl(${getVoteColor(d.mp.vote)})`)
       .attr("stroke", "hsl(var(--background))")
-      .attr("stroke-width", 0.5)
-      .style("cursor", "pointer")
-      .style("transition", "all 0.2s")
-      .on("mouseenter", function(event, d) {
-        d3.select(this)
-          .attr("stroke-width", 2)
-          .attr("r", 7);
-        
-        tooltip
-          .style("visibility", "visible")
-          .html(`
-            <div class="space-y-1">
-              <p class="font-semibold">${d.mp.firstName} ${d.mp.lastName}</p>
-              <p class="text-sm text-muted-foreground">${d.mp.party}</p>
-              <p class="text-sm">
-                ${d.mp.type === "constituency" 
-                  ? `ส.ส. เขต (${d.mp.district})` 
-                  : "ส.ส. บัญชีรายชื่อ"}
-              </p>
-              <p class="text-sm font-medium mt-2">
-                ผลการโหวต: <span class="font-bold">${getVoteLabel(d.mp.vote)}</span>
-              </p>
-              <p class="text-xs text-muted-foreground mt-2 italic">
-                คลิกเพื่อดูโปรไฟล์
-              </p>
-            </div>
-          `);
-      })
-      .on("mousemove", function(event) {
-        tooltip
-          .style("top", `${event.pageY - 10}px`)
-          .style("left", `${event.pageX + 10}px`);
-      })
-      .on("mouseleave", function() {
-        d3.select(this)
-          .attr("stroke-width", 0.5)
-          .attr("r", 6);
-        
-        tooltip.style("visibility", "hidden");
-      })
-      .on("click", (event, d) => {
-        navigate(`/mp/${d.mp.id}`);
-      });
+      .attr("stroke-width", 1);
+
+    // Add icons based on vote type
+    seats.each(function(d) {
+      const group = d3.select(this);
+      
+      if (d.mp.vote === "agree") {
+        // Checkmark
+        group.append("path")
+          .attr("d", "M-3,-1 L-1,2 L4,-3")
+          .attr("fill", "none")
+          .attr("stroke", "white")
+          .attr("stroke-width", 1.5)
+          .attr("stroke-linecap", "round")
+          .attr("stroke-linejoin", "round");
+      } else if (d.mp.vote === "disagree") {
+        // X mark
+        group.append("path")
+          .attr("d", "M-3,-3 L3,3 M3,-3 L-3,3")
+          .attr("fill", "none")
+          .attr("stroke", "white")
+          .attr("stroke-width", 1.5)
+          .attr("stroke-linecap", "round");
+      } else {
+        // Minus sign for abstain/absent
+        group.append("line")
+          .attr("x1", -4)
+          .attr("y1", 0)
+          .attr("x2", 4)
+          .attr("y2", 0)
+          .attr("stroke", "white")
+          .attr("stroke-width", 1.5)
+          .attr("stroke-linecap", "round");
+      }
+    });
+
+    // Add interaction handlers
+    seats.on("mouseenter", function(event, d) {
+      d3.select(this).select("circle")
+        .attr("stroke-width", 2.5)
+        .attr("r", 12);
+      
+      tooltip
+        .style("visibility", "visible")
+        .html(`
+          <div class="space-y-1">
+            <p class="font-semibold">${d.mp.firstName} ${d.mp.lastName}</p>
+            <p class="text-sm text-muted-foreground">${d.mp.party}</p>
+            <p class="text-sm">
+              ${d.mp.type === "constituency" 
+                ? `ส.ส. เขต (${d.mp.district})` 
+                : "ส.ส. บัญชีรายชื่อ"}
+            </p>
+            <p class="text-sm font-medium mt-2">
+              ผลการโหวต: <span class="font-bold">${getVoteLabel(d.mp.vote)}</span>
+            </p>
+            <p class="text-xs text-muted-foreground mt-2 italic">
+              คลิกเพื่อดูโปรไฟล์
+            </p>
+          </div>
+        `);
+    })
+    .on("mousemove", function(event) {
+      tooltip
+        .style("top", `${event.pageY - 10}px`)
+        .style("left", `${event.pageX + 10}px`);
+    })
+    .on("mouseleave", function() {
+      d3.select(this).select("circle")
+        .attr("stroke-width", 1)
+        .attr("r", 10);
+      
+      tooltip.style("visibility", "hidden");
+    })
+    .on("click", (event, d) => {
+      navigate(`/mp/${d.mp.id}`);
+    });
 
     // Store zoom behavior for external controls
     (svgRef.current as any).__zoom = zoom;
