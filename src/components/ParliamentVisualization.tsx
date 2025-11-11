@@ -1,9 +1,11 @@
 import { MP } from "@/types/parliament";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Button } from "./ui/button";
 import { ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import * as d3 from "d3";
 import { useNavigate } from "react-router-dom";
+import { PartyFilter } from "./PartyFilter";
+import { Card } from "./ui/card";
 
 interface ParliamentVisualizationProps {
   mps: MP[];
@@ -13,6 +15,53 @@ export const ParliamentVisualization = ({ mps }: ParliamentVisualizationProps) =
   const svgRef = useRef<SVGSVGElement>(null);
   const navigate = useNavigate();
   const [zoomLevel, setZoomLevel] = useState(1);
+  
+  // Get unique parties from MPs
+  const parties = useMemo(() => {
+    return Array.from(new Set(mps.map(mp => mp.party))).sort();
+  }, [mps]);
+  
+  // State for selected parties (initially all selected)
+  const [selectedParties, setSelectedParties] = useState<Set<string>>(
+    new Set(parties)
+  );
+  
+  // Update selected parties when parties change
+  useEffect(() => {
+    setSelectedParties(new Set(parties));
+  }, [parties]);
+  
+  const handleToggleParty = (party: string) => {
+    setSelectedParties(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(party)) {
+        newSet.delete(party);
+      } else {
+        newSet.add(party);
+      }
+      return newSet;
+    });
+  };
+  
+  const handleSelectAll = () => {
+    setSelectedParties(new Set(parties));
+  };
+  
+  const handleClearAll = () => {
+    setSelectedParties(new Set());
+  };
+  
+  // Calculate vote statistics for selected parties
+  const selectedStats = useMemo(() => {
+    const filteredMPs = mps.filter(mp => selectedParties.has(mp.party));
+    const total = filteredMPs.length;
+    const agree = filteredMPs.filter(mp => mp.vote === "agree").length;
+    const disagree = filteredMPs.filter(mp => mp.vote === "disagree").length;
+    const abstain = filteredMPs.filter(mp => mp.vote === "abstain").length;
+    const absent = filteredMPs.filter(mp => mp.vote === "absent").length;
+    
+    return { total, agree, disagree, abstain, absent };
+  }, [mps, selectedParties]);
 
   const getVoteColor = (vote: string) => {
     const root = document.documentElement;
@@ -155,16 +204,20 @@ export const ParliamentVisualization = ({ mps }: ParliamentVisualizationProps) =
       .attr("transform", d => `translate(${d.x},${d.y})`)
       .style("cursor", "pointer");
 
-    // Draw circles
+    // Draw circles with opacity based on party selection
     seats.append("circle")
       .attr("r", 10)
       .attr("fill", d => `hsl(${getVoteColor(d.mp.vote)})`)
       .attr("stroke", "hsl(var(--background))")
-      .attr("stroke-width", 1);
+      .attr("stroke-width", 1)
+      .attr("opacity", d => selectedParties.has(d.mp.party) ? 1 : 0.15)
+      .attr("class", "seat-circle");
 
     // Add icons based on vote type
     seats.each(function(d) {
       const group = d3.select(this);
+      const isSelected = selectedParties.has(d.mp.party);
+      const iconOpacity = isSelected ? 1 : 0.15;
       
       if (d.mp.vote === "agree") {
         // Checkmark
@@ -174,7 +227,9 @@ export const ParliamentVisualization = ({ mps }: ParliamentVisualizationProps) =
           .attr("stroke", "white")
           .attr("stroke-width", 1.5)
           .attr("stroke-linecap", "round")
-          .attr("stroke-linejoin", "round");
+          .attr("stroke-linejoin", "round")
+          .attr("opacity", iconOpacity)
+          .attr("class", "seat-icon");
       } else if (d.mp.vote === "disagree") {
         // X mark
         group.append("path")
@@ -182,7 +237,9 @@ export const ParliamentVisualization = ({ mps }: ParliamentVisualizationProps) =
           .attr("fill", "none")
           .attr("stroke", "white")
           .attr("stroke-width", 1.5)
-          .attr("stroke-linecap", "round");
+          .attr("stroke-linecap", "round")
+          .attr("opacity", iconOpacity)
+          .attr("class", "seat-icon");
       } else {
         // Minus sign for abstain/absent
         group.append("line")
@@ -192,7 +249,9 @@ export const ParliamentVisualization = ({ mps }: ParliamentVisualizationProps) =
           .attr("y2", 0)
           .attr("stroke", "white")
           .attr("stroke-width", 1.5)
-          .attr("stroke-linecap", "round");
+          .attr("stroke-linecap", "round")
+          .attr("opacity", iconOpacity)
+          .attr("class", "seat-icon");
       }
     });
 
@@ -241,7 +300,30 @@ export const ParliamentVisualization = ({ mps }: ParliamentVisualizationProps) =
     // Store zoom behavior for external controls
     (svgRef.current as any).__zoom = zoom;
 
-  }, [mps, navigate]);
+  }, [mps, navigate, selectedParties]);
+  
+  // Update seat opacity when selectedParties changes
+  useEffect(() => {
+    if (!svgRef.current) return;
+    
+    const svg = d3.select(svgRef.current);
+    const seats = svg.selectAll("g.seat");
+    
+    seats.each(function(d: any) {
+      const group = d3.select(this);
+      const isSelected = selectedParties.has(d.mp.party);
+      
+      group.select(".seat-circle")
+        .transition()
+        .duration(300)
+        .attr("opacity", isSelected ? 1 : 0.15);
+      
+      group.selectAll(".seat-icon")
+        .transition()
+        .duration(300)
+        .attr("opacity", isSelected ? 1 : 0.15);
+    });
+  }, [selectedParties]);
 
   const handleZoomIn = () => {
     if (svgRef.current) {
@@ -274,40 +356,97 @@ export const ParliamentVisualization = ({ mps }: ParliamentVisualizationProps) =
   };
 
   return (
-    <div className="relative w-full bg-card rounded-xl shadow-lg p-8">
-      {/* Zoom Controls */}
-      <div className="absolute top-4 right-4 z-10 flex gap-2">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={handleZoomOut}
-          title="Zoom Out"
-        >
-          <ZoomOut className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={handleReset}
-          title="Reset View"
-        >
-          <RotateCcw className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={handleZoomIn}
-          title="Zoom In"
-        >
-          <ZoomIn className="h-4 w-4" />
-        </Button>
+    <div className="space-y-4">
+      {/* Party Filter */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div className="lg:col-span-1">
+          <PartyFilter
+            parties={parties}
+            selectedParties={selectedParties}
+            onToggleParty={handleToggleParty}
+            onSelectAll={handleSelectAll}
+            onClearAll={handleClearAll}
+          />
+        </div>
+        
+        {/* Selected Stats */}
+        <div className="lg:col-span-3">
+          <Card className="p-4 bg-card/50 backdrop-blur-sm">
+            <h3 className="text-sm font-semibold text-foreground mb-3">
+              สถิติการโหวตของพรรคที่เลือก
+            </h3>
+            <div className="grid grid-cols-5 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-foreground">
+                  {selectedStats.total}
+                </div>
+                <div className="text-xs text-muted-foreground">ทั้งหมด</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-vote-agree">
+                  {selectedStats.agree}
+                </div>
+                <div className="text-xs text-muted-foreground">เห็นด้วย</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-vote-disagree">
+                  {selectedStats.disagree}
+                </div>
+                <div className="text-xs text-muted-foreground">ไม่เห็นด้วย</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-vote-abstain">
+                  {selectedStats.abstain}
+                </div>
+                <div className="text-xs text-muted-foreground">งดออกเสียง</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-vote-absent">
+                  {selectedStats.absent}
+                </div>
+                <div className="text-xs text-muted-foreground">ไม่ลงคะแนน</div>
+              </div>
+            </div>
+          </Card>
+        </div>
       </div>
 
-      <div className="w-full flex justify-center items-center overflow-hidden">
-        <svg
-          ref={svgRef}
-          className="cursor-grab active:cursor-grabbing"
-        />
+      {/* Parliament Visualization */}
+      <div className="relative w-full bg-card rounded-xl shadow-lg p-8">
+        {/* Zoom Controls */}
+        <div className="absolute top-4 right-4 z-10 flex gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleZoomOut}
+            title="Zoom Out"
+          >
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleReset}
+            title="Reset View"
+          >
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleZoomIn}
+            title="Zoom In"
+          >
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="w-full flex justify-center items-center overflow-hidden">
+          <svg
+            ref={svgRef}
+            className="cursor-grab active:cursor-grabbing"
+          />
+        </div>
       </div>
     </div>
   );
