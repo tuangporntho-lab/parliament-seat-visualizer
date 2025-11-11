@@ -230,26 +230,6 @@ export const VoteSummaryChart = ({ mps }: VoteSummaryChartProps) => {
               </div>
             </div>
           </div>
-
-          {/* Legend */}
-          <div className="flex flex-wrap gap-4 text-xs text-muted-foreground justify-center">
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded bg-vote-agree" />
-              <span>เห็นด้วย {voteTotals.agree}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded bg-vote-disagree" />
-              <span>ไม่เห็นด้วย {voteTotals.disagree}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded bg-vote-abstain" />
-              <span>งดออกเสียง {voteTotals.abstain}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded bg-vote-absent" />
-              <span>ไม่ลงคะแนน {voteTotals.absent}</span>
-            </div>
-          </div>
         </div>
 
         {/* Party Highlight Bar */}
